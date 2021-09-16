@@ -16,25 +16,49 @@ defmodule Dbien do
     :world
   end
 
-  def get do
-    {:ok, conn} = Mint.HTTP.connect(:http, "localhost", 8000)
+  @doc """
+  This factored out to maybe reuse http conn
+  """
+  def do_get(conn) do
     {:ok, conn, _request_ref} = Mint.HTTP.request(conn, "GET", "/", [], "")
+
     receive do
       message ->
-        {:ok, _conn, responses} = Mint.HTTP.stream(conn, message)
-        [{:status, _, status_code}|_] = responses
+        {:ok, conn, responses} = Mint.HTTP.stream(conn, message)
+        [{:status, _, status_code} | _] = responses
+        # {:ok, conn, status_code}
         status_code
     end
   end
 
-  def bench(n) do
-    #TODO allow change URL
+  def get(n) do
+    {:ok, conn} = Mint.HTTP.connect(:http, "localhost", 8000)
+    [do_get(conn)]
+    # {_, r} = 1..n |> Enum.reduce({conn, []}, fn _, {conn, ss} ->
+    #    {:ok, conn, status} = do_get(conn)
+    #    {conn, [status|ss]}
+    # end)
+    # r
+    # TODO: may need to check how connection closed
+  end
+
+  def bench(c \\ 70, n \\ 10_000) do
+    # TODO allow change URL
     start = System.monotonic_time(:millisecond)
-    1..n |> Task.async_stream(fn _i -> Dbien.get() end) |> Enum.to_list
+    # TODO how to reuse conn for each task runner
+    # create c conns first, then pass it to workers
+    1..n
+    |> Task.async_stream(fn _i -> Dbien.get(div(n, c)) end, max_concurrency: c)
+    |> Enum.to_list()
+    |> Enum.map(fn {:ok, v} -> v end)
+    |> Enum.concat()
+    |> Enum.frequencies()
+    |> IO.inspect()
+
     stop = System.monotonic_time(:millisecond)
     duration = stop - start
     IO.puts("#{duration} ms")
-    IO.puts("Throughput: #{n/(duration/1000)} RPS")
+    IO.puts("Throughput: #{n / (duration / 1000)} RPS")
     # TODO time each conn to calculate latency
     # TODO how to create 1000 concurrency level???
     # TODO much later, already 2x locust single node
