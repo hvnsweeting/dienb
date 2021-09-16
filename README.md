@@ -1,6 +1,15 @@
 # Dbien
 
 **TODO: Add description**
+## Usage
+
+```sh
+$ mix run dbien.exs -c 100 -n 10000 http://localhost:8000/fast
+Compiling 1 file (.ex)
+%{200 => 10000}
+3138 ms
+Throughput: 3186 RPS
+```
 
 ## Installation
 
