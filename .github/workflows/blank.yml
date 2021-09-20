@@ -36,7 +36,7 @@ jobs:
           sudo apt-get install esl-erlang
           sudo apt-get install elixir
           mix local.hex --force
-          mix archive.install hex phx_new 1.5.12 --force
+          yes | mix archive.install hex phx_new 1.5.12 --force
           mix phx.new --live hello
           cd hello; /usr/bin/time -v mix deps.get
           echo test, and deploy your project.
